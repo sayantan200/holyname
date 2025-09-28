@@ -60,15 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final todayString = DateFormat('yyyy-MM-dd').format(now);
 
         for (int i = 1; i < excelData.length; i++) {
-          final rowDate = excelData[i][3]?.toString();
+          final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
           if (rowDate != null &&
               (rowDate == todayString || rowDate.startsWith(todayString))) {
             final row = excelData[i];
-            final holyNames = row[2]?.toString() ?? '';
-            final holidayHebrew = row[9]?.toString() ?? '';
+            final holyNames = row[1]?.toString() ?? ''; // Column B (index 1) - Hebrew Names
+            final holidayHebrew = row[4]?.toString() ?? ''; // Column E (index 4) - Holiday Hebrew
 
-            final dayHebrew = row[0]?.toString() ?? '';
-            final monthHebrew = row[1]?.toString() ?? '';
+            final dayHebrew = row[0]?.toString() ?? ''; // Column A (index 0) - Hebrew Month/Day
+            final monthHebrew = row[3]?.toString() ?? ''; // Column D (index 3) - Hebrew Day names
 
             String title = _formatDate(rowDate);
             String body = "$dayHebrew $monthHebrew\n\n$holyNames";
@@ -190,14 +190,14 @@ class _HomeScreenState extends State<HomeScreen> {
         // Find data for this specific date
         final dateString = DateFormat('yyyy-MM-dd').format(date);
         for (int i = 1; i < excelData.length; i++) {
-          final rowDate = excelData[i][3]?.toString();
+          final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
           if (rowDate != null &&
               (rowDate == dateString || rowDate.startsWith(dateString))) {
             final row = excelData[i];
-            final holyNames = row[2]?.toString() ?? '';
-            final holidayHebrew = row[9]?.toString() ?? '';
-            final dayHebrew = row[0]?.toString() ?? '';
-            final monthHebrew = row[1]?.toString() ?? '';
+            final holyNames = row[1]?.toString() ?? ''; // Column B (index 1) - Hebrew Names
+            final holidayHebrew = row[4]?.toString() ?? ''; // Column E (index 4) - Holiday Hebrew
+            final dayHebrew = row[0]?.toString() ?? ''; // Column A (index 0) - Hebrew Month/Day
+            final monthHebrew = row[3]?.toString() ?? ''; // Column D (index 3) - Hebrew Day names
 
             title = _formatDate(rowDate);
             body = "$dayHebrew $monthHebrew\\n\\n$holyNames";
@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime now = DateTime.now();
 
     final matchingRows = excelData.where((row) {
-      final cellValue = row[3]; // Date column
+      final cellValue = row[2]; // Column C (index 2) - Date column
       final parsedDate = DateTime.tryParse(cellValue.toString());
 
       if (parsedDate != null) {
@@ -257,20 +257,20 @@ class _HomeScreenState extends State<HomeScreen> {
       // Display relevant information for today's date
       final row = matchingRows[0];
 
-      // C: Holy Names Hebrew (Column 2)
-      final holyNames = row[2] != null ? row[2].toString() : '';
+      // Column B (index 1) - Holy Names Hebrew
+      final holyNames = row[1] != null ? row[1].toString() : '';
 
-      // D: Date (Column 3) - Reference cell
-      final referenceDate = '${row[3]}';
+      // Column C (index 2) - Date
+      final referenceDate = '${row[2]}';
 
-      // K: Holiday Hebrew (Column 9) - when applicable
-      final holidayHebrew = row[9] != null && row[9].toString().isNotEmpty
-          ? row[9].toString()
+      // Column E (index 4) - Holiday Hebrew
+      final holidayHebrew = row[4] != null && row[4].toString().isNotEmpty
+          ? row[4].toString()
           : '';
 
       // Get Hebrew day and month
-      final dayHebrew = row[0] != null ? row[0].toString() : '';
-      final monthHebrew = row[1] != null ? row[1].toString() : '';
+      final dayHebrew = row[0] != null ? row[0].toString() : ''; // Column A (index 0)
+      final monthHebrew = row[3] != null ? row[3].toString() : ''; // Column D (index 3)
 
       // Format notification as: A, B, C, K (when applicable)
       String notificationTitle = dateConvert(referenceDate);
@@ -391,11 +391,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final currentRow = excelData[currentDayIndex + 1]; // Skip header row
-    final dayHebrew = currentRow[0]?.toString() ?? '';
-    final monthHebrew = currentRow[1]?.toString() ?? '';
-    final holyNames = currentRow[2]?.toString() ?? '';
-    final date = currentRow[3]?.toString() ?? '';
-    final holidayHebrew = currentRow[9]?.toString() ?? '';
+    final dayHebrew = currentRow[0]?.toString() ?? ''; // Column A (index 0) - Hebrew Month/Day
+    final monthHebrew = currentRow[3]?.toString() ?? ''; // Column D (index 3) - Hebrew Day names
+    final holyNames = currentRow[1]?.toString() ?? ''; // Column B (index 1) - Hebrew Names
+    final date = currentRow[2]?.toString() ?? ''; // Column C (index 2) - Date
+    final holidayHebrew = currentRow[4]?.toString() ?? ''; // Column E (index 4) - Holiday Hebrew
 
     return Column(
       children: [
@@ -682,10 +682,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (excelData.isEmpty || currentDayIndex >= excelData.length - 1) return;
 
     final currentRow = excelData[currentDayIndex + 1];
-    final dayHebrew = currentRow[0]?.toString() ?? '';
-    final monthHebrew = currentRow[1]?.toString() ?? '';
-    final holyNames = currentRow[2]?.toString() ?? '';
-    final date = currentRow[3]?.toString() ?? '';
+    final dayHebrew = currentRow[0]?.toString() ?? ''; // Column A (index 0) - Hebrew Month/Day
+    final monthHebrew = currentRow[3]?.toString() ?? ''; // Column D (index 3) - Hebrew Day names
+    final holyNames = currentRow[1]?.toString() ?? ''; // Column B (index 1) - Hebrew Names
+    final date = currentRow[2]?.toString() ?? ''; // Column C (index 2) - Date
 
     final shareText =
         '$dayHebrew: $monthHebrew\n${dateConvert(date)}\n\n$holyNames';
@@ -701,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayString = DateFormat('yyyy-MM-dd').format(today);
 
     for (int i = 1; i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
+      final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
 
       if (rowDate != null) {
         // Try different date formats
@@ -725,7 +725,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Get sample of available dates
     List<String> availableDates = [];
     for (int i = 1; i < 10 && i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
+      final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
       if (rowDate != null) {
         availableDates.add(rowDate);
       }
@@ -872,12 +872,12 @@ class _HomeScreenState extends State<HomeScreen> {
     // Debug: Print first few dates from Excel data
     print('Excel data sample (first 5 dates):');
     for (int i = 1; i < 6 && i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
+      final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
       print('Row $i date: $rowDate');
     }
 
     for (int i = 1; i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
+      final rowDate = excelData[i][2]?.toString(); // Column C (index 2) contains dates
       if (rowDate != null) {
         // Try exact match first
         for (String format in dateFormats) {
@@ -1014,8 +1014,7 @@ class ExcelDataTable extends StatelessWidget {
               onPressed: () async {
                 final currentDate = DateTime.now();
                 final matchingRows = data.where((row) {
-                  final cellValue = row[
-                      3]; // Changed from row[4] to row[3] - date column moved
+                  final cellValue = row[2]; // Column C (index 2) - Date column
                   // Processing cell value
                   final parsedDate = DateTime.tryParse(cellValue.toString());
 
@@ -1033,22 +1032,22 @@ class ExcelDataTable extends StatelessWidget {
                   // Display relevant information for today's date
                   final row = matchingRows[0];
 
-                  // A: Day Hebrew (Column 0)
+                  // Column A (index 0) - Day Hebrew
                   final dayHebrew = '${row[0]}';
 
-                  // B: Month Hebrew (Column 1)
-                  final monthHebrew = '${row[1]}';
+                  // Column D (index 3) - Month Hebrew (Hebrew Day names)
+                  final monthHebrew = '${row[3]}';
 
-                  // C: Holy Names Hebrew (Column 2)
-                  final holyNames = row[2] != null ? row[2].toString() : '';
+                  // Column B (index 1) - Holy Names Hebrew
+                  final holyNames = row[1] != null ? row[1].toString() : '';
 
-                  // D: Date (Column 3) - Reference cell
-                  final referenceDate = '${row[3]}';
+                  // Column C (index 2) - Date
+                  final referenceDate = '${row[2]}';
 
-                  // K: Holiday Hebrew (Column 9) - when applicable
+                  // Column E (index 4) - Holiday Hebrew
                   final holidayHebrew =
-                      row[9] != null && row[9].toString().isNotEmpty
-                          ? row[9].toString()
+                      row[4] != null && row[4].toString().isNotEmpty
+                          ? row[4].toString()
                           : '';
 
                   showDialog(
