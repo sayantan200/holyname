@@ -722,6 +722,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showNoDataDialog(DateTime date) {
     final formattedDate = DateFormat('MMMM dd, yyyy').format(date);
 
+    // Get sample of available dates
+    List<String> availableDates = [];
+    for (int i = 1; i < 10 && i < excelData.length; i++) {
+      final rowDate = excelData[i][3]?.toString();
+      if (rowDate != null) {
+        availableDates.add(rowDate);
+      }
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -751,7 +760,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'No holy names data is available for today:',
+                'No holy names data is available for:',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -775,10 +784,32 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'The app is currently showing the first available entry in the database.',
+                'Available dates in database:',
                 style: TextStyle(
                   fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: 100,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: availableDates.map((date) => 
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '• $date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      )
+                    ).toList(),
+                  ),
                 ),
               ),
             ],
@@ -822,15 +853,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToSpecificDate(DateTime selectedDate) {
     final selectedDateString = DateFormat('yyyy-MM-dd').format(selectedDate);
+    
+    // Debug: Print selected date
+    print('Selected date: $selectedDateString');
+    
+    // Try multiple date formats that might be in the Excel data
+    final dateFormats = [
+      selectedDateString, // yyyy-MM-dd
+      DateFormat('yyyy/MM/dd').format(selectedDate), // yyyy/MM/dd
+      DateFormat('MM/dd/yyyy').format(selectedDate), // MM/dd/yyyy
+      DateFormat('dd/MM/yyyy').format(selectedDate), // dd/MM/yyyy
+      DateFormat('yyyy-M-d').format(selectedDate), // yyyy-M-d (single digit month/day)
+    ];
+    
+    // Debug: Print available date formats
+    print('Trying date formats: $dateFormats');
+
+    // Debug: Print first few dates from Excel data
+    print('Excel data sample (first 5 dates):');
+    for (int i = 1; i < 6 && i < excelData.length; i++) {
+      final rowDate = excelData[i][3]?.toString();
+      print('Row $i date: $rowDate');
+    }
 
     for (int i = 1; i < excelData.length; i++) {
       final rowDate = excelData[i][3]?.toString();
-      if (rowDate == selectedDateString) {
-        setState(() {
-          currentDayIndex = i - 1; // Convert to 0-based index
-        });
-        // Navigated to selected date
-        return;
+      if (rowDate != null) {
+        // Try exact match first
+        for (String format in dateFormats) {
+          if (rowDate == format) {
+            setState(() {
+              currentDayIndex = i - 1; // Convert to 0-based index
+            });
+            return;
+          }
+        }
+        
+        // Try partial match (in case Excel has time components)
+        for (String format in dateFormats) {
+          if (rowDate.startsWith(format)) {
+            setState(() {
+              currentDayIndex = i - 1; // Convert to 0-based index
+            });
+            return;
+          }
+        }
+        
+        // Try parsing the date and comparing
+        try {
+          final parsedRowDate = DateTime.parse(rowDate);
+          if (isSameDay(parsedRowDate, selectedDate)) {
+            setState(() {
+              currentDayIndex = i - 1; // Convert to 0-based index
+            });
+            return;
+          }
+        } catch (e) {
+          // Continue to next row if parsing fails
+        }
       }
     }
 
