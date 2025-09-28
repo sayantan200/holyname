@@ -47,5 +47,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>This app needs notification access to send daily holy names reminders at 7 AM.</string>
 </dict>
 </plist>

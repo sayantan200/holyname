@@ -136,8 +136,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Cancel any existing notifications
     await NotificationServices().cancelAllIOSNotifications();
 
-    // Schedule notifications for the next 365 days at 7 AM
-    for (int i = 0; i < 365; i++) {
+    // iOS limitation: Only schedule next 30 days (iOS allows max 64 notifications)
+    // Schedule notifications for the next 30 days at 7 AM
+    for (int i = 0; i < 30; i++) {
       final notificationTime = DateTime.now().add(Duration(days: i));
       final scheduledDateTime = DateTime(
         notificationTime.year,
