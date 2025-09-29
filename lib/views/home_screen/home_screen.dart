@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<List<dynamic>> excelData = [];
   NotificationServices services = NotificationServices();
   int currentDayIndex = 0;
+  DateTime? currentSelectedDate; // Track the currently selected date
 
   static String _formatDate(String date) {
     try {
@@ -640,6 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentDayIndex > 0) {
       setState(() {
         currentDayIndex--;
+        _updateCurrentSelectedDate();
       });
     }
   }
@@ -648,14 +650,32 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentDayIndex < excelData.length - 2) {
       setState(() {
         currentDayIndex++;
+        _updateCurrentSelectedDate();
       });
     }
   }
 
+  void _updateCurrentSelectedDate() {
+    if (excelData.isNotEmpty && currentDayIndex < excelData.length - 1) {
+      final currentRow = excelData[currentDayIndex + 1];
+      final dateString = currentRow[3]?.toString();
+      if (dateString != null) {
+        try {
+          currentSelectedDate = DateTime.parse(dateString);
+        } catch (e) {
+          // If parsing fails, keep the current selected date
+        }
+      }
+    }
+  }
+
   void _viewByDate() async {
+    // Use currently selected date or current date as initial date
+    DateTime initialDate = currentSelectedDate ?? DateTime.now();
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2025),
       lastDate: DateTime(2027, 12, 31),
       builder: (context, child) {
@@ -719,15 +739,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _showNoDataDialog(today);
   }
 
-  void _showNoDataDialog(DateTime date) {
+  void _showNoDataDialog(DateTime date, {bool fromPicker = false}) {
     final formattedDate = DateFormat('MMMM dd, yyyy').format(date);
-
-    // Get sample of available dates
-    List<String> availableDates = [];
-    for (int i = 1; i < 10 && i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
-      if (rowDate != null) {
-        availableDates.add(rowDate);
+    // Determine what is currently shown so we can communicate clearly
+    String? currentlyShownDateStr;
+    if (excelData.isNotEmpty && currentDayIndex < excelData.length - 1) {
+      final currentRow = excelData[currentDayIndex + 1];
+      final shownDateRaw = currentRow[3]?.toString();
+      if (shownDateRaw != null) {
+        final parsed = DateTime.tryParse(shownDateRaw);
+        currentlyShownDateStr = parsed != null
+            ? DateFormat('MMMM dd, yyyy').format(parsed)
+            : shownDateRaw;
       }
     }
 
@@ -760,7 +783,9 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'No holy names data is available for:',
+                fromPicker
+                    ? 'No holy names data is available for the selected date:'
+                    : 'No holy names data is available for today:',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -784,32 +809,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Available dates in database:',
+                fromPicker
+                    ? (currentlyShownDateStr != null
+                        ? 'Showing previously viewed date: $currentlyShownDateStr.'
+                        : 'Showing previously viewed entry.')
+                    : 'The app is currently showing the first available entry in the database.',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
                   color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 100,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: availableDates.map((date) => 
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '• $date',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      )
-                    ).toList(),
-                  ),
                 ),
               ),
             ],
@@ -853,59 +860,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToSpecificDate(DateTime selectedDate) {
     final selectedDateString = DateFormat('yyyy-MM-dd').format(selectedDate);
-    
-    // Debug: Print selected date
-    print('Selected date: $selectedDateString');
-    
-    // Try multiple date formats that might be in the Excel data
-    final dateFormats = [
-      selectedDateString, // yyyy-MM-dd
-      DateFormat('yyyy/MM/dd').format(selectedDate), // yyyy/MM/dd
-      DateFormat('MM/dd/yyyy').format(selectedDate), // MM/dd/yyyy
-      DateFormat('dd/MM/yyyy').format(selectedDate), // dd/MM/yyyy
-      DateFormat('yyyy-M-d').format(selectedDate), // yyyy-M-d (single digit month/day)
-    ];
-    
-    // Debug: Print available date formats
-    print('Trying date formats: $dateFormats');
-
-    // Debug: Print first few dates from Excel data
-    print('Excel data sample (first 5 dates):');
-    for (int i = 1; i < 6 && i < excelData.length; i++) {
-      final rowDate = excelData[i][3]?.toString();
-      print('Row $i date: $rowDate');
-    }
 
     for (int i = 1; i < excelData.length; i++) {
       final rowDate = excelData[i][3]?.toString();
+
       if (rowDate != null) {
-        // Try exact match first
-        for (String format in dateFormats) {
-          if (rowDate == format) {
-            setState(() {
-              currentDayIndex = i - 1; // Convert to 0-based index
-            });
-            return;
-          }
+        // Try different date formats and matching strategies
+        if (rowDate == selectedDateString ||
+            rowDate.startsWith(selectedDateString) ||
+            rowDate.contains(selectedDateString)) {
+          setState(() {
+            currentDayIndex = i - 1; // Convert to 0-based index
+            currentSelectedDate = selectedDate; // Store the selected date
+          });
+          // Navigated to selected date
+          return;
         }
-        
-        // Try partial match (in case Excel has time components)
-        for (String format in dateFormats) {
-          if (rowDate.startsWith(format)) {
-            setState(() {
-              currentDayIndex = i - 1; // Convert to 0-based index
-            });
-            return;
-          }
-        }
-        
-        // Try parsing the date and comparing
+
+        // Try parsing the row date and comparing DateTime objects
         try {
           final parsedRowDate = DateTime.parse(rowDate);
-          if (isSameDay(parsedRowDate, selectedDate)) {
+          if (parsedRowDate.year == selectedDate.year &&
+              parsedRowDate.month == selectedDate.month &&
+              parsedRowDate.day == selectedDate.day) {
             setState(() {
               currentDayIndex = i - 1; // Convert to 0-based index
+              currentSelectedDate = selectedDate; // Store the selected date
             });
+            // Navigated to selected date
             return;
           }
         } catch (e) {
@@ -914,8 +896,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // If selected date not found, show user-friendly dialog
-    _showNoDataDialog(selectedDate);
+    // If selected date not found, show user-friendly dialog tailored for picker
+    _showNoDataDialog(selectedDate, fromPicker: true);
   }
 
   void _setupDailyNotifications() {
