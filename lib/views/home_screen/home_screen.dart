@@ -337,7 +337,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (excelData.isNotEmpty) {
         _navigateToToday();
-        _setupDailyNotifications();
+        if (Platform.isAndroid) {
+          _setupDailyNotifications();
+        }
       }
     } catch (e) {
       // Silent error handling

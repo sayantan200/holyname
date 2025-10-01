@@ -1,7 +1,5 @@
 import 'dart:io';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:holyname/constants/app_constants.dart';
 import 'package:holyname/views/home_screen/splash_screen.dart';
@@ -9,7 +7,6 @@ import 'package:timezone/data/latest.dart' as tz; // Import the timezone data
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   tz.initializeTimeZones();
 
   // Initialize platform-specific services
@@ -17,16 +14,10 @@ void main() async {
     await AndroidAlarmManager.initialize();
   }
 
-  // FirebaseMessaging.onBackgroundMessage(firebaseMessagesBackgroundHandler);
   // await Alarm.init();
 
   // final excelData = await loadExcelData();
   runApp(const MyApp());
-}
-
-@pragma('vm:entry-point')
-Future<void> firebaseMessagesBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
 }
 
 class MyApp extends StatelessWidget {
