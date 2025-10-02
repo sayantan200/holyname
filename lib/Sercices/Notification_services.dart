@@ -106,6 +106,7 @@ class NotificationServices {
           badgeNumber: 1,
           categoryIdentifier: 'holy_names_category',
           threadIdentifier: 'holy_names_thread',
+          interruptionLevel: InterruptionLevel.active,
         ));
   }
 
