@@ -134,11 +134,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _setupIOSNotifications() async {
+    print('🍎 [iOS SCHEDULER] Starting iOS notification setup...');
+
     // Cancel any existing notifications
     await NotificationServices().cancelAllIOSNotifications();
+    print('🍎 [iOS SCHEDULER] Cancelled existing notifications');
 
     // iOS limitation: Only schedule next 30 days (iOS allows max 64 notifications)
     // Schedule notifications for the next 30 days at 7 AM
+    print(
+        '🍎 [iOS SCHEDULER] Scheduling notifications for next 30 days at 7 AM');
+
+    int scheduledCount = 0;
     for (int i = 0; i < 30; i++) {
       final notificationTime = DateTime.now().add(Duration(days: i));
       final scheduledDateTime = DateTime(
@@ -150,29 +157,44 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (scheduledDateTime.isAfter(DateTime.now())) {
+        print(
+            '🍎 [iOS SCHEDULER] Scheduling notification ${i + 1}/30 for ${scheduledDateTime.toString()}');
         await _scheduleIOSNotificationForDate(
             scheduledDateTime, i + 1000); // Use IDs starting from 1000
+        scheduledCount++;
       }
     }
+
+    print(
+        '🍎 [iOS SCHEDULER] Successfully scheduled $scheduledCount notifications');
   }
 
   Future<void> _scheduleIOSNotificationForDate(DateTime date, int id) async {
+    print(
+        '🍎 [iOS SCHEDULER] Scheduling notification for date: ${date.toString()}, ID: $id');
+
     tz.initializeTimeZones();
 
     try {
       final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(currentTimeZone));
+      print('🍎 [iOS SCHEDULER] Timezone set to: $currentTimeZone');
     } catch (e) {
       tz.setLocalLocation(tz.getLocation('UTC'));
+      print('🍎 [iOS SCHEDULER] Timezone fallback to UTC due to error: $e');
     }
 
     final tz.TZDateTime scheduledDateTime = tz.TZDateTime.from(date, tz.local);
+    print(
+        '🍎 [iOS SCHEDULER] Scheduled DateTime: ${scheduledDateTime.toString()}');
 
     // Load Excel data to get the actual content for this date
     String title = DateFormat('MMMM dd, yyyy').format(date);
     String body = 'Check the app for today\'s holy names and blessings';
 
     try {
+      print(
+          '🍎 [iOS SCHEDULER] Loading Excel data for date: ${DateFormat('yyyy-MM-dd').format(date)}');
       final ByteData data = await rootBundle.load(
           'assets/holy names shabbat and chagim pdf doc 2025 to end 2027.xlsx');
       final bytes =
@@ -190,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Find data for this specific date
         final dateString = DateFormat('yyyy-MM-dd').format(date);
+        bool foundData = false;
         for (int i = 1; i < excelData.length; i++) {
           final rowDate = excelData[i][3]?.toString();
           if (rowDate != null &&
@@ -205,12 +228,22 @@ class _HomeScreenState extends State<HomeScreen> {
             if (holidayHebrew.isNotEmpty) {
               body += "\\n\\n$holidayHebrew";
             }
+            foundData = true;
+            print('🍎 [iOS SCHEDULER] Found Excel data for date: $dateString');
+            print('🍎 [iOS SCHEDULER] Title: $title');
+            print('🍎 [iOS SCHEDULER] Body length: ${body.length} characters');
             break;
           }
         }
+
+        if (!foundData) {
+          print(
+              '🍎 [iOS SCHEDULER] No Excel data found for date: $dateString, using default content');
+        }
       }
     } catch (e) {
-      // Use default content if Excel loading fails
+      print(
+          '🍎 [iOS SCHEDULER] Error loading Excel data: $e, using default content');
     }
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -227,16 +260,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final NotificationDetails platformChannelSpecifics =
         const NotificationDetails(iOS: iosDetails);
 
-    await NotificationServices().notificationsPlugin.zonedSchedule(
-          id,
-          title,
-          body,
-          scheduledDateTime,
-          platformChannelSpecifics,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.time,
-        );
+    try {
+      await NotificationServices().notificationsPlugin.zonedSchedule(
+            id,
+            title,
+            body,
+            scheduledDateTime,
+            platformChannelSpecifics,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+          );
+
+      print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
+      print('🍎 [iOS SCHEDULER] Final title: $title');
+      print(
+          '🍎 [iOS SCHEDULER] Final body: ${body.length > 100 ? body.substring(0, 100) + '...' : body}');
+    } catch (e) {
+      print(
+          '🍎 [iOS SCHEDULER] ❌ Error scheduling notification ID: $id, Error: $e');
+    }
   }
 
   Future getNotification() async {
@@ -672,6 +715,39 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            const SizedBox(height: 10),
+
+            // Test 3: Check Scheduled Notifications
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _checkScheduledNotifications,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule, size: 20, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Check Scheduled Notifications',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 20),
           ],
 
@@ -1008,6 +1084,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // iOS Notification Test Methods
+  Future<void> _checkScheduledNotifications() async {
+    print('🍎 [iOS SCHEDULER] Checking currently scheduled notifications...');
+
+    try {
+      // Get pending notifications
+      final List<PendingNotificationRequest> pendingNotifications =
+          await NotificationServices()
+              .notificationsPlugin
+              .pendingNotificationRequests();
+
+      print(
+          '🍎 [iOS SCHEDULER] Found ${pendingNotifications.length} pending notifications:');
+
+      for (var notification in pendingNotifications) {
+        print('🍎 [iOS SCHEDULER] - ID: ${notification.id}');
+        print('🍎 [iOS SCHEDULER] - Title: ${notification.title}');
+        print('🍎 [iOS SCHEDULER] - Body: ${notification.body}');
+        print('🍎 [iOS SCHEDULER] - Payload: ${notification.payload}');
+        print('🍎 [iOS SCHEDULER] ---');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '📋 Found ${pendingNotifications.length} scheduled notifications. Check console for details.'),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('🍎 [iOS SCHEDULER] ❌ Error checking scheduled notifications: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error checking notifications: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _testIOSClickableNotification() async {
     print('🔔 [iOS TEST] Starting clickable notification test...');
 
