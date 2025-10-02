@@ -29,13 +29,13 @@ class NotificationServices {
     if (Platform.isWindows) {
       return;
     }
-    
+
     try {
       final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
-      
+
       // Handle outdated timezone names
       String correctedTimeZone = timeZoneName ?? 'UTC';
-      
+
       // Map outdated timezone names to current ones
       switch (correctedTimeZone) {
         case 'Asia/Calcutta':
@@ -60,7 +60,7 @@ class NotificationServices {
           // Keep the original timezone name
           break;
       }
-      
+
       tz.setLocalLocation(tz.getLocation(correctedTimeZone));
     } catch (e) {
       // Fallback to UTC if timezone detection fails
@@ -118,7 +118,15 @@ class NotificationServices {
       onDidReceiveNotificationResponse:
           (NotificationResponse notificationResponse) async {
         // Handle notification taps
-        print('Notification tapped: ${notificationResponse.payload}');
+        print('🔔 [NOTIFICATION TAP] Notification tapped:');
+        print('   - ID: ${notificationResponse.id}');
+        print('   - Action ID: ${notificationResponse.actionId}');
+        print('   - Payload: ${notificationResponse.payload}');
+
+        if (Platform.isIOS) {
+          print(
+              '🍎 [iOS NOTIFICATION TAP] iOS notification interaction detected');
+        }
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
@@ -218,6 +226,16 @@ class NotificationServices {
 
   Future showNotification(
       {int id = 0, String? title, String? body, String? payLoad}) async {
+    print('🔔 [NOTIFICATION] Showing notification - ID: $id, Title: $title');
+
+    if (Platform.isIOS) {
+      print('🍎 [iOS NOTIFICATION] iOS-specific notification details:');
+      print('   - ID: $id');
+      print('   - Title: $title');
+      print('   - Body: $body');
+      print('   - Payload: $payLoad');
+    }
+
     return notificationsPlugin.show(
         id, title, body, await notificationDetails());
   }
@@ -309,10 +327,20 @@ class NotificationServices {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    // Timezone is already configured in initNotification
+    print(
+        '⏰ [SCHEDULE] Scheduling notification - ID: $id, Time: $scheduledTime');
 
+    // Timezone is already configured in initNotification
     final tz.TZDateTime scheduledDateTime =
         tz.TZDateTime.from(scheduledTime, tz.local);
+
+    if (Platform.isIOS) {
+      print('🍎 [iOS SCHEDULE] iOS-specific scheduled notification:');
+      print('   - ID: $id');
+      print('   - Title: $title');
+      print('   - Body: $body');
+      print('   - Scheduled Time: $scheduledDateTime');
+    }
 
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -327,8 +355,23 @@ class NotificationServices {
       icon: '@mipmap/ic_launcher',
     );
 
-    final NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+    // iOS-specific notification details
+    const DarwinNotificationDetails iosPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'default',
+      badgeNumber: 1,
+      categoryIdentifier: 'holy_names_category',
+      threadIdentifier: 'holy_names_thread',
+      interruptionLevel: InterruptionLevel.active,
+    );
+
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iosPlatformChannelSpecifics,
+    );
 
     await notificationsPlugin.zonedSchedule(
       id,
@@ -340,6 +383,8 @@ class NotificationServices {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
+
+    print('✅ [SCHEDULE] Notification scheduled successfully');
   }
 
   Future<void> showSimpleNotification({
