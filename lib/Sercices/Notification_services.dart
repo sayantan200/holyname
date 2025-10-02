@@ -151,6 +151,14 @@ class NotificationServices {
       }
 
       // Request iOS permissions properly
+      // First, try requesting via permission_handler to surface the system prompt
+      try {
+        final PermissionStatus systemPrompt = await Permission.notification.request();
+        print('🍎 [iOS PERMISSION] Result from Permission.notification.request(): ' + systemPrompt.toString());
+      } catch (e) {
+        print('🍎 [iOS PERMISSION] Error requesting via Permission.notification.request(): ' + e.toString());
+      }
+
       await notificationsPlugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -172,7 +180,8 @@ class NotificationServices {
       try {
         final PermissionStatus after = await Permission.notification.status;
         print('🍎 [iOS PERMISSION] Status after request: ' + after.toString());
-        if (!after.isGranted) {
+        final bool allowed = after.isGranted || after.toString().contains('provisional');
+        if (!allowed) {
           print(
               '🍎 [iOS PERMISSION] Not granted. Immediate notifications may not appear.');
 
@@ -193,6 +202,9 @@ class NotificationServices {
                     onPressed: () async {
                       Navigator.of(dialogContext).pop();
                       await openAppSettings();
+                      await Future.delayed(const Duration(milliseconds: 500));
+                      final PermissionStatus recheck = await Permission.notification.status;
+                      print('🍎 [iOS PERMISSION] Status after returning from Settings: ' + recheck.toString());
                     },
                     child: const Text('Open Settings'),
                   ),
