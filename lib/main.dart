@@ -3,20 +3,20 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:holyname/constants/app_constants.dart';
 import 'package:holyname/views/home_screen/splash_screen.dart';
-import 'package:timezone/data/latest.dart' as tz; // Import the timezone data
+import 'package:holyname/Sercices/Notification_services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
+
+  // Initialize notifications
+  final NotificationServices notificationService = NotificationServices();
+  await notificationService.initNotification();
 
   // Initialize platform-specific services
   if (Platform.isAndroid) {
     await AndroidAlarmManager.initialize();
   }
 
-  // await Alarm.init();
-
-  // final excelData = await loadExcelData();
   runApp(const MyApp());
 }
 

@@ -9,9 +9,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:holyname/Sercices/Notification_services.dart';
 import 'package:holyname/views/home_screen/info_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -600,12 +599,25 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                final ByteData data = await rootBundle.load(
-                    'assets/PDF holy names shabbat and chagim pdf doc 2025 to end 2027.pdf');
-                final bytes = data.buffer.asUint8List();
-                await Printing.layoutPdf(
-                  onLayout: (PdfPageFormat format) async => bytes,
-                );
+                try {
+                  // Load PDF from assets
+                  final ByteData data = await rootBundle.load(
+                      'assets/PDF holy names shabbat and chagim pdf doc 2025 to end 2027.pdf');
+                  final bytes = data.buffer.asUint8List();
+
+                  // Save to temporary directory
+                  final Directory tempDir = await getTemporaryDirectory();
+                  final String tempPath =
+                      '${tempDir.path}/holy_names_calendar.pdf';
+                  final File tempFile = File(tempPath);
+                  await tempFile.writeAsBytes(bytes);
+
+                  // Share the PDF file
+                  await Share.shareXFiles([XFile(tempPath)],
+                      text: 'Holy Names Calendar - Shabbat and Holidays');
+                } catch (e) {
+                  print('Error sharing PDF: $e');
+                }
               },
               style: ElevatedButton.styleFrom(
                 padding:
@@ -974,14 +986,25 @@ class ExcelDataTable extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: ElevatedButton(
               onPressed: () async {
-                final ByteData data = await rootBundle.load(
-                    'assets/PDF holy names shabbat and chagim pdf doc 2025 to end 2027.pdf');
-                final bytes = data.buffer.asUint8List();
-                // Save the asset's content as a PDF file
+                try {
+                  // Load PDF from assets
+                  final ByteData data = await rootBundle.load(
+                      'assets/PDF holy names shabbat and chagim pdf doc 2025 to end 2027.pdf');
+                  final bytes = data.buffer.asUint8List();
 
-                await Printing.layoutPdf(
-                  onLayout: (PdfPageFormat format) async => bytes,
-                );
+                  // Save to temporary directory
+                  final Directory tempDir = await getTemporaryDirectory();
+                  final String tempPath =
+                      '${tempDir.path}/holy_names_calendar.pdf';
+                  final File tempFile = File(tempPath);
+                  await tempFile.writeAsBytes(bytes);
+
+                  // Share the PDF file
+                  await Share.shareXFiles([XFile(tempPath)],
+                      text: 'Holy Names Calendar - Shabbat and Holidays');
+                } catch (e) {
+                  print('Error sharing PDF: $e');
+                }
               },
               child: const Text(
                 'שבת וחגים להדפסה',

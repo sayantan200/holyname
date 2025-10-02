@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -5,11 +7,35 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+// Background notification handler
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  // Handle background notification taps
+  print('notification(${notificationResponse.id}) action tapped: '
+      '${notificationResponse.actionId} with'
+      ' payload: ${notificationResponse.payload}');
+}
+
 class NotificationServices {
   final FlutterLocalNotificationsPlugin notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  // Configure local timezone properly
+  Future<void> _configureLocalTimeZone() async {
+    if (kIsWeb || Platform.isLinux) {
+      return;
+    }
+    tz.initializeTimeZones();
+    if (Platform.isWindows) {
+      return;
+    }
+    final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName!));
+  }
+
   Future<void> initNotification() async {
+    // Configure timezone first
+    await _configureLocalTimeZone();
     // Create notification channel for Android
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'holy_names_channel',
@@ -23,19 +49,43 @@ class NotificationServices {
     AndroidInitializationSettings initializationSettingsAndroid =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    // iOS notification categories for actions
+    final List<DarwinNotificationCategory> darwinNotificationCategories =
+        <DarwinNotificationCategory>[
+      DarwinNotificationCategory(
+        'holy_names_category',
+        actions: <DarwinNotificationAction>[
+          DarwinNotificationAction.plain(
+            'view_action',
+            'View',
+            options: <DarwinNotificationActionOption>{
+              DarwinNotificationActionOption.foreground,
+            },
+          ),
+        ],
+      ),
+    ];
+
     var initializationSettingsIOS = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false, // Request later for better UX
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+        notificationCategories: darwinNotificationCategories,
         onDidReceiveLocalNotification:
             (int id, String? title, String? body, String? payload) async {});
 
     var initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
 
-    await notificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse:
-            (NotificationResponse notificationResponse) async {});
+    await notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse:
+          (NotificationResponse notificationResponse) async {
+        // Handle notification taps
+        print('Notification tapped: ${notificationResponse.payload}');
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
 
     // Create the notification channel
     await notificationsPlugin
@@ -45,38 +95,58 @@ class NotificationServices {
   }
 
   Future<void> requestNotificationPermission(BuildContext context) async {
-    PermissionStatus notificationPermissionStatus =
-        await Permission.notification.request();
-
-    if (notificationPermissionStatus.isGranted) {
-      // Permission is granted, you can now use notifications.
-    } else if (notificationPermissionStatus.isDenied) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Notification Permission Required'),
-            content: const Text(
-                'Please enable notification permissions in the app settings to receive updates.'),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              TextButton(
-                child: const Text('Open Settings'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  openAppSettings();
-                },
-              ),
-            ],
+    if (Platform.isIOS || Platform.isMacOS) {
+      // Request iOS permissions properly
+      await notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
           );
-        },
-      );
-      // Permission is denied.
-    } else if (notificationPermissionStatus.isPermanentlyDenied) {
-      // Permission is permanently denied. Prompt user to open app settings.
+      await notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+    } else if (Platform.isAndroid) {
+      // Request Android permissions
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      final bool? grantedNotificationPermission =
+          await androidImplementation?.requestNotificationsPermission();
+
+      if (grantedNotificationPermission != true) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Notification Permission Required'),
+              content: const Text(
+                  'Please enable notification permissions in the app settings to receive updates.'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: const Text('Open Settings'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    openAppSettings();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
     }
   }
 
@@ -123,12 +193,7 @@ class NotificationServices {
       String? payLoad,
       int hour = 7,
       int minute = 0}) async {
-    tz.initializeTimeZones(); // Initialize timezones (you can call this once in your app)
-
-    // Get the user's current timezone
-    //String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
-    final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(currentTimeZone));
+    // Timezone is already configured in initNotification
 
     // Get the current time in the user's time zone
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
@@ -171,16 +236,7 @@ class NotificationServices {
     int hour = 7,
     int minute = 0,
   }) async {
-    tz.initializeTimeZones();
-
-    // Get the user's current timezone with fallback
-    try {
-      final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(currentTimeZone));
-    } catch (e) {
-      // Fallback to UTC if timezone not found
-      tz.setLocalLocation(tz.getLocation('UTC'));
-    }
+    // Timezone is already configured in initNotification
 
     // Get the current time in the user's time zone
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
@@ -217,14 +273,7 @@ class NotificationServices {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    tz.initializeTimeZones();
-
-    try {
-      final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(currentTimeZone));
-    } catch (e) {
-      tz.setLocalLocation(tz.getLocation('UTC'));
-    }
+    // Timezone is already configured in initNotification
 
     final tz.TZDateTime scheduledDateTime =
         tz.TZDateTime.from(scheduledTime, tz.local);
