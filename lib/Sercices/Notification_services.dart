@@ -29,8 +29,44 @@ class NotificationServices {
     if (Platform.isWindows) {
       return;
     }
-    final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName!));
+    
+    try {
+      final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
+      
+      // Handle outdated timezone names
+      String correctedTimeZone = timeZoneName ?? 'UTC';
+      
+      // Map outdated timezone names to current ones
+      switch (correctedTimeZone) {
+        case 'Asia/Calcutta':
+          correctedTimeZone = 'Asia/Kolkata';
+          break;
+        case 'Asia/Bombay':
+          correctedTimeZone = 'Asia/Kolkata';
+          break;
+        case 'US/Eastern':
+          correctedTimeZone = 'America/New_York';
+          break;
+        case 'US/Central':
+          correctedTimeZone = 'America/Chicago';
+          break;
+        case 'US/Mountain':
+          correctedTimeZone = 'America/Denver';
+          break;
+        case 'US/Pacific':
+          correctedTimeZone = 'America/Los_Angeles';
+          break;
+        default:
+          // Keep the original timezone name
+          break;
+      }
+      
+      tz.setLocalLocation(tz.getLocation(correctedTimeZone));
+    } catch (e) {
+      // Fallback to UTC if timezone detection fails
+      print('Timezone detection failed: $e, using UTC');
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
   }
 
   Future<void> initNotification() async {
