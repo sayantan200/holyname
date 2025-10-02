@@ -175,6 +175,31 @@ class NotificationServices {
         if (!after.isGranted) {
           print(
               '🍎 [iOS PERMISSION] Not granted. Immediate notifications may not appear.');
+
+          // Offer to open Settings so the user can enable notifications
+          showDialog(
+            context: context,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Enable Notifications'),
+                content: const Text(
+                    'Notifications are currently disabled. Please enable them in Settings to receive alerts.'),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.of(dialogContext).pop();
+                      await openAppSettings();
+                    },
+                    child: const Text('Open Settings'),
+                  ),
+                ],
+              );
+            },
+          );
         }
       } catch (e) {
         print('🍎 [iOS PERMISSION] Could not read status after request: ' +
