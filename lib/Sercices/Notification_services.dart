@@ -140,6 +140,16 @@ class NotificationServices {
 
   Future<void> requestNotificationPermission(BuildContext context) async {
     if (Platform.isIOS || Platform.isMacOS) {
+      // Log current permission status (via permission_handler)
+      try {
+        final PermissionStatus current = await Permission.notification.status;
+        print('🍎 [iOS PERMISSION] Current status before request: ' +
+            current.toString());
+      } catch (e) {
+        print('🍎 [iOS PERMISSION] Could not read current status: ' +
+            e.toString());
+      }
+
       // Request iOS permissions properly
       await notificationsPlugin
           .resolvePlatformSpecificImplementation<
@@ -157,6 +167,19 @@ class NotificationServices {
             badge: true,
             sound: true,
           );
+
+      // Re-check permission status and log result
+      try {
+        final PermissionStatus after = await Permission.notification.status;
+        print('🍎 [iOS PERMISSION] Status after request: ' + after.toString());
+        if (!after.isGranted) {
+          print(
+              '🍎 [iOS PERMISSION] Not granted. Immediate notifications may not appear.');
+        }
+      } catch (e) {
+        print('🍎 [iOS PERMISSION] Could not read status after request: ' +
+            e.toString());
+      }
     } else if (Platform.isAndroid) {
       // Request Android permissions
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
