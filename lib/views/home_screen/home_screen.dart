@@ -129,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
         hour: 7,
         minute: 0,
       );
-
     } else if (Platform.isIOS) {
       // iOS: Use local notifications with scheduled approach
       await _setupIOSNotifications();
@@ -253,20 +252,18 @@ class _HomeScreenState extends State<HomeScreen> {
             final monthHebrew = row[1]?.toString() ?? '';
 
             title = _formatDate(rowDate);
-            body = "$dayHebrew $monthHebrew\\n\\n$holyNames";
+            body = "$dayHebrew $monthHebrew\n\n$holyNames";
             if (holidayHebrew.isNotEmpty) {
-              body += "\\n\\n$holidayHebrew";
+              body += "\n\n$holidayHebrew";
             }
             foundData = true;
             break;
           }
         }
 
-        if (!foundData) {
-        }
+        if (!foundData) {}
       }
-    } catch (e) {
-    }
+    } catch (e) {}
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -292,9 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
           );
-
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future getNotification() async {
@@ -984,7 +979,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (now.isAfter(next7AM)) {
       next7AM = next7AM.add(const Duration(days: 1));
     }
-
 
     return next7AM;
   }
