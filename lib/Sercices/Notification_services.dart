@@ -29,13 +29,13 @@ class NotificationServices {
     if (Platform.isWindows) {
       return;
     }
-    
+
     try {
       final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
-      
+
       // Handle outdated timezone names
       String correctedTimeZone = timeZoneName ?? 'UTC';
-      
+
       // Map outdated timezone names to current ones
       switch (correctedTimeZone) {
         case 'Asia/Calcutta':
@@ -60,7 +60,7 @@ class NotificationServices {
           // Keep the original timezone name
           break;
       }
-      
+
       tz.setLocalLocation(tz.getLocation(correctedTimeZone));
     } catch (e) {
       // Fallback to UTC if timezone detection fails

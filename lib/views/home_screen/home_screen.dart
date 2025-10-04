@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (Platform.isAndroid) {
       // Android: Use timezone-aware notification scheduling
-      print('🤖 [ANDROID SCHEDULER] Setting up Android notifications...');
+      // print('🤖 [ANDROID SCHEDULER] Setting up Android notifications...');
 
       // Cancel any existing notifications first
       await NotificationServices().cancelAllIOSNotifications();
@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         minute: 0,
       );
 
-      print(
+      // print(
           '🤖 [ANDROID SCHEDULER] Android notification scheduled successfully');
     } else if (Platform.isIOS) {
       // iOS: Use local notifications with scheduled approach
@@ -140,18 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _setupIOSNotifications() async {
-    print('🍎 [iOS SCHEDULER] Starting iOS notification setup...');
 
     // Cancel any existing notifications
     await NotificationServices().cancelAllIOSNotifications();
-    print('🍎 [iOS SCHEDULER] Cancelled existing notifications');
 
     // iOS limitation: Only schedule next 30 days (iOS allows max 64 notifications)
     // Schedule notifications for the next 30 days at 7 AM
-    print(
-        '🍎 [iOS SCHEDULER] Scheduling notifications for next 30 days at 7 AM');
 
-    int scheduledCount = 0;
     for (int i = 0; i < 30; i++) {
       final notificationTime = DateTime.now().add(Duration(days: i));
       final scheduledDateTime = DateTime(
@@ -163,43 +158,32 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (scheduledDateTime.isAfter(DateTime.now())) {
-        print(
-            '🍎 [iOS SCHEDULER] Scheduling notification ${i + 1}/30 for ${scheduledDateTime.toString()}');
         await _scheduleIOSNotificationForDate(
             scheduledDateTime, i + 1000); // Use IDs starting from 1000
-        scheduledCount++;
       }
     }
 
-    print(
-        '🍎 [iOS SCHEDULER] Successfully scheduled $scheduledCount notifications');
   }
 
   Future<void> _scheduleIOSNotificationForDate(DateTime date, int id) async {
-    print(
-        '🍎 [iOS SCHEDULER] Scheduling notification for date: ${date.toString()}, ID: $id');
 
     tz.initializeTimeZones();
 
     try {
       final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(currentTimeZone));
-      print('🍎 [iOS SCHEDULER] Timezone set to: $currentTimeZone');
     } catch (e) {
       tz.setLocalLocation(tz.getLocation('UTC'));
-      print('🍎 [iOS SCHEDULER] Timezone fallback to UTC due to error: $e');
     }
 
     final tz.TZDateTime scheduledDateTime = tz.TZDateTime.from(date, tz.local);
-    print(
-        '🍎 [iOS SCHEDULER] Scheduled DateTime: ${scheduledDateTime.toString()}');
 
     // Load Excel data to get the actual content for this date
     String title = DateFormat('MMMM dd, yyyy').format(date);
     String body = 'Check the app for today\'s holy names and blessings';
 
     try {
-      print(
+      // print(
           '🍎 [iOS SCHEDULER] Loading Excel data for date: ${DateFormat('yyyy-MM-dd').format(date)}');
       final ByteData data = await rootBundle.load(
           'assets/holy names shabbat and chagim pdf doc 2025 to end 2027.xlsx');
@@ -235,20 +219,20 @@ class _HomeScreenState extends State<HomeScreen> {
               body += "\\n\\n$holidayHebrew";
             }
             foundData = true;
-            print('🍎 [iOS SCHEDULER] Found Excel data for date: $dateString');
-            print('🍎 [iOS SCHEDULER] Title: $title');
-            print('🍎 [iOS SCHEDULER] Body length: ${body.length} characters');
+            // print('🍎 [iOS SCHEDULER] Found Excel data for date: $dateString');
+            // print('🍎 [iOS SCHEDULER] Title: $title');
+            // print('🍎 [iOS SCHEDULER] Body length: ${body.length} characters');
             break;
           }
         }
 
         if (!foundData) {
-          print(
+          // print(
               '🍎 [iOS SCHEDULER] No Excel data found for date: $dateString, using default content');
         }
       }
     } catch (e) {
-      print(
+      // print(
           '🍎 [iOS SCHEDULER] Error loading Excel data: $e, using default content');
     }
 
@@ -277,12 +261,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 UILocalNotificationDateInterpretation.absoluteTime,
           );
 
-      print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
-      print('🍎 [iOS SCHEDULER] Final title: $title');
-      print(
+      // print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
+      // print('🍎 [iOS SCHEDULER] Final title: $title');
+      // print(
           '🍎 [iOS SCHEDULER] Final body: ${body.length > 100 ? body.substring(0, 100) + '...' : body}');
     } catch (e) {
-      print(
+      // print(
           '🍎 [iOS SCHEDULER] ❌ Error scheduling notification ID: $id, Error: $e');
     }
   }
@@ -643,7 +627,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 20),
 
-
           // Android test UI removed
 
           // PDF Download Button
@@ -976,13 +959,12 @@ class _HomeScreenState extends State<HomeScreen> {
       next7AM = next7AM.add(const Duration(days: 1));
     }
 
-    print('🌍 [ANDROID SCHEDULER] Next 7 AM scheduled for: $next7AM');
-    print('🌍 [ANDROID SCHEDULER] Current time: $now');
-    print('🌍 [ANDROID SCHEDULER] Timezone: ${now.timeZoneName}');
+    // print('🌍 [ANDROID SCHEDULER] Next 7 AM scheduled for: $next7AM');
+    // print('🌍 [ANDROID SCHEDULER] Current time: $now');
+    // print('🌍 [ANDROID SCHEDULER] Timezone: ${now.timeZoneName}');
 
     return next7AM;
   }
-
 }
 
 class ExcelDataTable extends StatelessWidget {
