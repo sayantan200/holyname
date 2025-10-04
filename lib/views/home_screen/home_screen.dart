@@ -22,7 +22,7 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> {
   List<List<dynamic>> excelData = [];
   NotificationServices services = NotificationServices();
   int currentDayIndex = 0;
@@ -105,27 +105,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _setupPlatformSpecificNotifications();
     loadExcelData().then((value) async {
       // Simple notification setup
     });
-    _checkAndRenewNotifications(); // Check for renewal on app start
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      // Check for renewal when app becomes active
-      _checkAndRenewNotifications();
-    }
   }
 
   void _setupPlatformSpecificNotifications() async {
@@ -134,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (Platform.isAndroid) {
       // Android: Use timezone-aware notification scheduling
-      // print('🤖 [ANDROID SCHEDULER] Setting up Android notifications...');
 
       // Cancel any existing notifications first
       await NotificationServices().cancelAllIOSNotifications();
@@ -148,8 +130,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         minute: 0,
       );
 
-      // print(
-          '🤖 [ANDROID SCHEDULER] Android notification scheduled successfully');
     } else if (Platform.isIOS) {
       // iOS: Use local notifications with scheduled approach
       await _setupIOSNotifications();
@@ -157,15 +137,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _setupIOSNotifications() async {
-    // Cancel any existing notifications
+    // Cancel all existing notifications
     await NotificationServices().cancelAllIOSNotifications();
 
-    // Schedule notifications for the next 30 days at 7 AM
-    await _scheduleIOSNotificationsBatch(0, 30);
-  }
+    // Get the last available date from Excel data
+    final DateTime? lastExcelDate = await _getLastExcelDate();
+    if (lastExcelDate == null) return;
 
-  Future<void> _scheduleIOSNotificationsBatch(int startDay, int count) async {
-    for (int i = startDay; i < count; i++) {
+    // Calculate how many days we can schedule (max 30 days or until Excel ends)
+    final DateTime today = DateTime.now();
+    final int daysUntilEnd = lastExcelDate.difference(today).inDays;
+    final int daysToSchedule = daysUntilEnd > 30 ? 30 : daysUntilEnd;
+
+    // Schedule notifications for the next available days at 7 AM
+    for (int i = 0; i < daysToSchedule; i++) {
       final notificationTime = DateTime.now().add(Duration(days: i));
       final scheduledDateTime = DateTime(
         notificationTime.year,
@@ -182,40 +167,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _checkAndRenewNotifications() async {
-    try {
-      // Get pending notifications
-      final List<PendingNotificationRequest> pendingNotifications =
-          await NotificationServices().notificationsPlugin.pendingNotificationRequests();
-
-      // If we have less than 5 notifications remaining, schedule more
-      if (pendingNotifications.length < 5) {
-        // Get the last available date from Excel data
-        final DateTime? lastExcelDate = await _getLastExcelDate();
-        if (lastExcelDate != null) {
-          // Calculate how many days we can schedule
-          final DateTime today = DateTime.now();
-          final int daysUntilEnd = lastExcelDate.difference(today).inDays;
-          
-          if (daysUntilEnd > 0) {
-            // Schedule notifications until Excel data ends
-            final int startDay = 30; // Start from day 30
-            final int endDay = daysUntilEnd > 60 ? 60 : daysUntilEnd; // Max 60 days or until Excel ends
-            
-            await _scheduleIOSNotificationsBatch(startDay, endDay);
-          }
-        }
-      }
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
   Future<DateTime?> _getLastExcelDate() async {
     try {
       final ByteData data = await rootBundle.load(
           'assets/holy names shabbat and chagim pdf doc 2025 to end 2027.xlsx');
-      final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      final bytes =
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       final excel = Excel.decodeBytes(bytes);
       final sheet = excel.tables['Sheet1'];
 
@@ -223,7 +180,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final dataRows = sheet.rows;
         final excelData = dataRows
             .map((row) => row.map((cell) => cell?.value).toList())
-            .where((row) => row.any((cellData) => cellData != null && cellData != ''))
+            .where((row) =>
+                row.any((cellData) => cellData != null && cellData != ''))
             .toList();
 
         // Find the last date in the Excel data
@@ -250,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _scheduleIOSNotificationForDate(DateTime date, int id) async {
-
     tz.initializeTimeZones();
 
     try {
@@ -267,8 +224,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String body = 'Check the app for today\'s holy names and blessings';
 
     try {
-      // print(
-          '🍎 [iOS SCHEDULER] Loading Excel data for date: ${DateFormat('yyyy-MM-dd').format(date)}');
       final ByteData data = await rootBundle.load(
           'assets/holy names shabbat and chagim pdf doc 2025 to end 2027.xlsx');
       final bytes =
@@ -303,21 +258,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               body += "\\n\\n$holidayHebrew";
             }
             foundData = true;
-            // print('🍎 [iOS SCHEDULER] Found Excel data for date: $dateString');
-            // print('🍎 [iOS SCHEDULER] Title: $title');
-            // print('🍎 [iOS SCHEDULER] Body length: ${body.length} characters');
             break;
           }
         }
 
         if (!foundData) {
-          // print(
-              '🍎 [iOS SCHEDULER] No Excel data found for date: $dateString, using default content');
         }
       }
     } catch (e) {
-      // print(
-          '🍎 [iOS SCHEDULER] Error loading Excel data: $e, using default content');
     }
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -345,13 +293,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 UILocalNotificationDateInterpretation.absoluteTime,
           );
 
-      // print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
-      // print('🍎 [iOS SCHEDULER] Final title: $title');
-      // print(
-          '🍎 [iOS SCHEDULER] Final body: ${body.length > 100 ? body.substring(0, 100) + '...' : body}');
     } catch (e) {
-      // print(
-          '🍎 [iOS SCHEDULER] ❌ Error scheduling notification ID: $id, Error: $e');
     }
   }
 
@@ -1043,9 +985,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       next7AM = next7AM.add(const Duration(days: 1));
     }
 
-    // print('🌍 [ANDROID SCHEDULER] Next 7 AM scheduled for: $next7AM');
-    // print('🌍 [ANDROID SCHEDULER] Current time: $now');
-    // print('🌍 [ANDROID SCHEDULER] Timezone: ${now.timeZoneName}');
 
     return next7AM;
   }
