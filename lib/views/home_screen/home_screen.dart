@@ -116,17 +116,23 @@ class _HomeScreenState extends State<HomeScreen> {
     await NotificationServices().initNotification();
 
     if (Platform.isAndroid) {
-      // Android: Use AndroidAlarmManager for background notifications
-      AndroidAlarmManager.periodic(
-        const Duration(days: 1), // Every 24 hours
-        777,
-        printHello,
-        allowWhileIdle: true,
-        exact: true,
-        wakeup: true,
-        startAt: _getNext7AM(),
-        rescheduleOnReboot: true,
+      // Android: Use timezone-aware notification scheduling
+      print('🤖 [ANDROID SCHEDULER] Setting up Android notifications...');
+
+      // Cancel any existing notifications first
+      await NotificationServices().cancelAllIOSNotifications();
+
+      // Schedule daily notification at 7 AM using timezone-aware scheduling
+      await NotificationServices().scheduleDailyNotification(
+        id: 777,
+        title: 'Holy Names',
+        body: 'Daily holy names reminder',
+        hour: 7,
+        minute: 0,
       );
+
+      print(
+          '🤖 [ANDROID SCHEDULER] Android notification scheduled successfully');
     } else if (Platform.isIOS) {
       // iOS: Use local notifications with scheduled approach
       await _setupIOSNotifications();
@@ -261,16 +267,15 @@ class _HomeScreenState extends State<HomeScreen> {
         const NotificationDetails(iOS: iosDetails);
 
     try {
-      await NotificationServices().notificationsPlugin.zonedSchedule(
-            id,
-            title,
-            body,
-            scheduledDateTime,
-            platformChannelSpecifics,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
-            matchDateTimeComponents: DateTimeComponents.time,
-          );
+    await NotificationServices().notificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          scheduledDateTime,
+          platformChannelSpecifics,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
 
       print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
       print('🍎 [iOS SCHEDULER] Final title: $title');
@@ -751,6 +756,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
           ],
 
+          // Android test UI removed
+
           // PDF Download Button
           SizedBox(
             width: double.infinity,
@@ -1072,13 +1079,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   DateTime _getNext7AM() {
-    final now = DateTime.now();
-    var next7AM = DateTime(now.year, now.month, now.day, 7, 0);
+    // Use timezone-aware scheduling for consistency
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    var next7AM = tz.TZDateTime(tz.local, now.year, now.month, now.day, 7, 0);
 
     // If it's already past 7 AM today, schedule for tomorrow
     if (now.isAfter(next7AM)) {
       next7AM = next7AM.add(const Duration(days: 1));
     }
+
+    print('🌍 [ANDROID SCHEDULER] Next 7 AM scheduled for: $next7AM');
+    print('🌍 [ANDROID SCHEDULER] Current time: $now');
+    print('🌍 [ANDROID SCHEDULER] Timezone: ${now.timeZoneName}');
 
     return next7AM;
   }
@@ -1569,4 +1581,6 @@ class ExcelDataTable extends StatelessWidget {
     String formattedDate = DateFormat('MMMM-dd-yyyy').format(dateTime);
     return formattedDate;
   }
+
+  // Android test method removed
 }
