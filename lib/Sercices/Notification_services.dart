@@ -29,13 +29,13 @@ class NotificationServices {
     if (Platform.isWindows) {
       return;
     }
-
+    
     try {
       final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
-
+      
       // Handle outdated timezone names
       String correctedTimeZone = timeZoneName ?? 'UTC';
-
+      
       // Map outdated timezone names to current ones
       switch (correctedTimeZone) {
         case 'Asia/Calcutta':
@@ -60,7 +60,7 @@ class NotificationServices {
           // Keep the original timezone name
           break;
       }
-
+      
       tz.setLocalLocation(tz.getLocation(correctedTimeZone));
     } catch (e) {
       // Fallback to UTC if timezone detection fails
@@ -118,15 +118,7 @@ class NotificationServices {
       onDidReceiveNotificationResponse:
           (NotificationResponse notificationResponse) async {
         // Handle notification taps
-        print('🔔 [NOTIFICATION TAP] Notification tapped:');
-        print('   - ID: ${notificationResponse.id}');
-        print('   - Action ID: ${notificationResponse.actionId}');
-        print('   - Payload: ${notificationResponse.payload}');
-
-        if (Platform.isIOS) {
-          print(
-              '🍎 [iOS NOTIFICATION TAP] iOS notification interaction detected');
-        }
+        print('Notification tapped: ${notificationResponse.payload}');
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
@@ -140,25 +132,6 @@ class NotificationServices {
 
   Future<void> requestNotificationPermission(BuildContext context) async {
     if (Platform.isIOS || Platform.isMacOS) {
-      // Log current permission status (via permission_handler)
-      try {
-        final PermissionStatus current = await Permission.notification.status;
-        print('🍎 [iOS PERMISSION] Current status before request: ' +
-            current.toString());
-      } catch (e) {
-        print('🍎 [iOS PERMISSION] Could not read current status: ' +
-            e.toString());
-      }
-
-      // Request iOS permissions properly
-      // First, try requesting via permission_handler to surface the system prompt
-      try {
-        final PermissionStatus systemPrompt = await Permission.notification.request();
-        print('🍎 [iOS PERMISSION] Result from Permission.notification.request(): ' + systemPrompt.toString());
-      } catch (e) {
-        print('🍎 [iOS PERMISSION] Error requesting via Permission.notification.request(): ' + e.toString());
-      }
-
       await notificationsPlugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -175,48 +148,6 @@ class NotificationServices {
             badge: true,
             sound: true,
           );
-
-      // Re-check permission status and log result
-      try {
-        final PermissionStatus after = await Permission.notification.status;
-        print('🍎 [iOS PERMISSION] Status after request: ' + after.toString());
-        final bool allowed = after.isGranted || after.toString().contains('provisional');
-        if (!allowed) {
-          print(
-              '🍎 [iOS PERMISSION] Not granted. Immediate notifications may not appear.');
-
-          // Offer to open Settings so the user can enable notifications
-          showDialog(
-            context: context,
-            builder: (BuildContext dialogContext) {
-              return AlertDialog(
-                title: const Text('Enable Notifications'),
-                content: const Text(
-                    'Notifications are currently disabled. Please enable them in Settings to receive alerts.'),
-                actions: <Widget>[
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      Navigator.of(dialogContext).pop();
-                      await openAppSettings();
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      final PermissionStatus recheck = await Permission.notification.status;
-                      print('🍎 [iOS PERMISSION] Status after returning from Settings: ' + recheck.toString());
-                    },
-                    child: const Text('Open Settings'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      } catch (e) {
-        print('🍎 [iOS PERMISSION] Could not read status after request: ' +
-            e.toString());
-      }
     } else if (Platform.isAndroid) {
       // Request Android permissions
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
@@ -286,16 +217,6 @@ class NotificationServices {
 
   Future showNotification(
       {int id = 0, String? title, String? body, String? payLoad}) async {
-    print('🔔 [NOTIFICATION] Showing notification - ID: $id, Title: $title');
-
-    if (Platform.isIOS) {
-      print('🍎 [iOS NOTIFICATION] iOS-specific notification details:');
-      print('   - ID: $id');
-      print('   - Title: $title');
-      print('   - Body: $body');
-      print('   - Payload: $payLoad');
-    }
-
     return notificationsPlugin.show(
         id, title, body, await notificationDetails());
   }
@@ -387,20 +308,9 @@ class NotificationServices {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    print(
-        '⏰ [SCHEDULE] Scheduling notification - ID: $id, Time: $scheduledTime');
-
     // Timezone is already configured in initNotification
     final tz.TZDateTime scheduledDateTime =
         tz.TZDateTime.from(scheduledTime, tz.local);
-
-    if (Platform.isIOS) {
-      print('🍎 [iOS SCHEDULE] iOS-specific scheduled notification:');
-      print('   - ID: $id');
-      print('   - Title: $title');
-      print('   - Body: $body');
-      print('   - Scheduled Time: $scheduledDateTime');
-    }
 
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -443,8 +353,6 @@ class NotificationServices {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
     );
-
-    print('✅ [SCHEDULE] Notification scheduled successfully');
   }
 
   Future<void> showSimpleNotification({

@@ -267,15 +267,15 @@ class _HomeScreenState extends State<HomeScreen> {
         const NotificationDetails(iOS: iosDetails);
 
     try {
-    await NotificationServices().notificationsPlugin.zonedSchedule(
-          id,
-          title,
-          body,
-          scheduledDateTime,
-          platformChannelSpecifics,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-        );
+      await NotificationServices().notificationsPlugin.zonedSchedule(
+            id,
+            title,
+            body,
+            scheduledDateTime,
+            platformChannelSpecifics,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
 
       print('🍎 [iOS SCHEDULER] ✅ Successfully scheduled notification ID: $id');
       print('🍎 [iOS SCHEDULER] Final title: $title');
@@ -643,118 +643,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 20),
 
-          // iOS Notification Test Buttons (iOS only)
-          if (Platform.isIOS) ...[
-            const Text(
-              'iOS Notification Tests',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Test 1: Clickable Notification
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _testIOSClickableNotification,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.notifications_active,
-                        size: 20, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'Test Clickable Notification',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Test 2: 1-Minute Timer Notification
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _testIOS1MinuteNotification,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.timer, size: 20, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'Test 1-Minute Timer Notification',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Test 3: Check Scheduled Notifications
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _checkScheduledNotifications,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.schedule, size: 20, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'Check Scheduled Notifications',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-          ],
 
           // Android test UI removed
 
@@ -1095,147 +983,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return next7AM;
   }
 
-  // iOS Notification Test Methods
-  Future<void> _checkScheduledNotifications() async {
-    print('🍎 [iOS SCHEDULER] Checking currently scheduled notifications...');
-
-    try {
-      // Get pending notifications
-      final List<PendingNotificationRequest> pendingNotifications =
-          await NotificationServices()
-              .notificationsPlugin
-              .pendingNotificationRequests();
-
-      print(
-          '🍎 [iOS SCHEDULER] Found ${pendingNotifications.length} pending notifications:');
-
-      for (var notification in pendingNotifications) {
-        print('🍎 [iOS SCHEDULER] - ID: ${notification.id}');
-        print('🍎 [iOS SCHEDULER] - Title: ${notification.title}');
-        print('🍎 [iOS SCHEDULER] - Body: ${notification.body}');
-        print('🍎 [iOS SCHEDULER] - Payload: ${notification.payload}');
-        print('🍎 [iOS SCHEDULER] ---');
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '📋 Found ${pendingNotifications.length} scheduled notifications. Check console for details.'),
-            backgroundColor: Colors.blue,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      print('🍎 [iOS SCHEDULER] ❌ Error checking scheduled notifications: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error checking notifications: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _testIOSClickableNotification() async {
-    print('🔔 [iOS TEST] Starting clickable notification test...');
-
-    try {
-      // Request permissions first
-      await services.requestNotificationPermission(context);
-
-      // Show immediate notification with clickable action
-      await services.showNotification(
-        id: 9999, // Use unique ID for test
-        title: 'iOS Test - Clickable Notification',
-        body:
-            'This is a test notification for iOS. Tap to test click handling.',
-        payLoad: 'test_clickable_notification',
-      );
-
-      print('🔔 [iOS TEST] Clickable notification sent successfully');
-
-      // Show success message to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                '✅ Clickable notification sent! Check your notification panel.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ [iOS TEST] Error sending clickable notification: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _testIOS1MinuteNotification() async {
-    print('⏰ [iOS TEST] Starting 1-minute timer notification test...');
-
-    try {
-      // Request permissions first
-      await services.requestNotificationPermission(context);
-
-      // Calculate time 1 minute from now
-      final now = DateTime.now();
-      final scheduledTime = now.add(const Duration(minutes: 1));
-
-      print(
-          '⏰ [iOS TEST] Scheduling notification for: ${scheduledTime.toString()}');
-
-      // Schedule notification for 1 minute from now
-      await services.scheduleNotification(
-        id: 9998, // Use unique ID for test
-        title: 'iOS Test - 1-Minute Timer',
-        body:
-            'This notification was scheduled 1 minute ago. Timer test successful!',
-        scheduledTime: scheduledTime,
-      );
-
-      print('⏰ [iOS TEST] 1-minute timer notification scheduled successfully');
-
-      // Show success message to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                '⏰ 1-minute timer notification scheduled! You\'ll receive it in 1 minute.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ [iOS TEST] Error scheduling 1-minute notification: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
 }
 
 class ExcelDataTable extends StatelessWidget {
