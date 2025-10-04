@@ -22,7 +22,7 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<List<dynamic>> excelData = [];
   NotificationServices services = NotificationServices();
   int currentDayIndex = 0;
@@ -105,10 +105,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupPlatformSpecificNotifications();
     loadExcelData().then((value) async {
       // Simple notification setup
     });
+    _checkAndRenewNotifications(); // Check for renewal on app start
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Check for renewal when app becomes active
+      _checkAndRenewNotifications();
+    }
   }
 
   void _setupPlatformSpecificNotifications() async {
@@ -140,14 +157,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _setupIOSNotifications() async {
-
     // Cancel any existing notifications
     await NotificationServices().cancelAllIOSNotifications();
 
-    // iOS limitation: Only schedule next 30 days (iOS allows max 64 notifications)
     // Schedule notifications for the next 30 days at 7 AM
+    await _scheduleIOSNotificationsBatch(0, 30);
+  }
 
-    for (int i = 0; i < 30; i++) {
+  Future<void> _scheduleIOSNotificationsBatch(int startDay, int count) async {
+    for (int i = startDay; i < count; i++) {
       final notificationTime = DateTime.now().add(Duration(days: i));
       final scheduledDateTime = DateTime(
         notificationTime.year,
@@ -162,7 +180,73 @@ class _HomeScreenState extends State<HomeScreen> {
             scheduledDateTime, i + 1000); // Use IDs starting from 1000
       }
     }
+  }
 
+  Future<void> _checkAndRenewNotifications() async {
+    try {
+      // Get pending notifications
+      final List<PendingNotificationRequest> pendingNotifications =
+          await NotificationServices().notificationsPlugin.pendingNotificationRequests();
+
+      // If we have less than 5 notifications remaining, schedule more
+      if (pendingNotifications.length < 5) {
+        // Get the last available date from Excel data
+        final DateTime? lastExcelDate = await _getLastExcelDate();
+        if (lastExcelDate != null) {
+          // Calculate how many days we can schedule
+          final DateTime today = DateTime.now();
+          final int daysUntilEnd = lastExcelDate.difference(today).inDays;
+          
+          if (daysUntilEnd > 0) {
+            // Schedule notifications until Excel data ends
+            final int startDay = 30; // Start from day 30
+            final int endDay = daysUntilEnd > 60 ? 60 : daysUntilEnd; // Max 60 days or until Excel ends
+            
+            await _scheduleIOSNotificationsBatch(startDay, endDay);
+          }
+        }
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  Future<DateTime?> _getLastExcelDate() async {
+    try {
+      final ByteData data = await rootBundle.load(
+          'assets/holy names shabbat and chagim pdf doc 2025 to end 2027.xlsx');
+      final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      final excel = Excel.decodeBytes(bytes);
+      final sheet = excel.tables['Sheet1'];
+
+      if (sheet != null) {
+        final dataRows = sheet.rows;
+        final excelData = dataRows
+            .map((row) => row.map((cell) => cell?.value).toList())
+            .where((row) => row.any((cellData) => cellData != null && cellData != ''))
+            .toList();
+
+        // Find the last date in the Excel data
+        DateTime? lastDate;
+        for (int i = 1; i < excelData.length; i++) {
+          final rowDate = excelData[i][3]?.toString();
+          if (rowDate != null && rowDate.isNotEmpty) {
+            try {
+              final date = DateTime.parse(rowDate);
+              if (lastDate == null || date.isAfter(lastDate)) {
+                lastDate = date;
+              }
+            } catch (e) {
+              // Skip invalid dates
+            }
+          }
+        }
+        return lastDate;
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+    return null;
   }
 
   Future<void> _scheduleIOSNotificationForDate(DateTime date, int id) async {
